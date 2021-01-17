@@ -1,0 +1,174 @@
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial(10, 11); //Pin10 RX , Pin 11 TX connected to--> Bluetooth TX,RX
+#include <IRremote.h>
+#include <FastLED.h>
+#include "DHT.h"
+#define relay1 2
+#define relay2 3
+#define relay3 4
+#define relay4 5
+int RECV_PIN = 9;
+IRrecv irrecv(RECV_PIN);
+decode_results results;
+char val;
+int stanje1,stanje2,stanje3,stanje4;
+//PIR senzor
+int pirPin = 6; // Input for HC-S501
+int pirValue; // Place to store read PIR Value
+//Senzor temperature
+#define DHTPIN 7    // Digital pin connected to the DHT sensor
+#define DHTTYPE DHT11   // DHT 11
+#define NUM_LEDS 3
+#define DATA_PIN 8
+#define CLOCK_PIN 13
+CRGB leds[NUM_LEDS];
+DHT dht(DHTPIN, DHTTYPE);
+void setup() {
+irrecv.enableIRIn();
+pinMode(relay1,OUTPUT);
+pinMode(relay2,OUTPUT);
+pinMode(relay3,OUTPUT);
+digitalWrite(relay1,HIGH);
+digitalWrite(relay2,HIGH);
+digitalWrite(relay3,HIGH);
+mySerial.begin(9600);
+Serial.begin(9600);
+//PIR senzor
+Serial.begin(9600);
+pinMode(relay4, OUTPUT);
+pinMode(pirPin, INPUT);
+digitalWrite(relay4, LOW );
+//Senzor temperature
+Serial.begin(9600);
+Serial.println(F("DHTxx test!"));
+FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
+dht.begin();
+}
+void loop() {
+//cek data serial from bluetooth android App
+if( mySerial.available() >0 ) {
+val = mySerial.read();
+Serial.println(val); 
+}
+//Relay is on
+if( val == '1' ) {
+digitalWrite(relay1,LOW); }
+else if( val == '2' ) {
+digitalWrite(relay2,LOW); }
+else if( val == '3' ) {
+digitalWrite(relay3,LOW); }
+//relay all on
+else if( val == '9' ) {
+digitalWrite(relay1,LOW);
+digitalWrite(relay2,LOW);
+digitalWrite(relay3,LOW);
+}
+//relay is off
+else if( val == 'A' ) {
+digitalWrite(relay1,HIGH); }
+else if( val == 'B' ) {
+digitalWrite(relay2,HIGH); }
+else if( val == 'C' ) {
+digitalWrite(relay3,HIGH); }
+//relay all off 
+else if( val == 'I' ) {
+digitalWrite(relay1,HIGH);
+digitalWrite(relay2,HIGH);
+digitalWrite(relay3,HIGH);
+}
+ //Relej
+       if (irrecv.decode(&results)){
+   
+
+        
+          if(stanje1 == LOW &&(results.value == 0xFF6897))
+          {
+            digitalWrite(relay1, LOW);
+            stanje1 = HIGH;
+          }
+          
+          else if(stanje1 == HIGH &&(results.value == 0xFF6897))
+          {
+           digitalWrite(relay1, HIGH); 
+           stanje1 = LOW;
+          }
+          
+        if(stanje2 == LOW &&(results.value == 0xFF9867))
+          {
+            digitalWrite(relay2, LOW);
+            stanje2 = HIGH;
+          }
+  
+          else if(stanje2 == HIGH &&(results.value == 0xFF9867))
+          {
+           digitalWrite(relay2, HIGH); 
+           stanje2 = LOW;
+          }
+
+          if(stanje3 == LOW &&(results.value == 0xFFB04F))
+          {
+            digitalWrite(relay3, LOW);
+            stanje3 = HIGH;
+          }
+          
+          else if(stanje3 == HIGH &&(results.value == 0xFFB04F))
+          {
+           digitalWrite(relay3, HIGH); 
+           stanje3 = LOW;
+          }
+          
+          irrecv.resume();
+         Serial.println(results.value); 
+    }
+ //PIR senzor
+  pirValue = digitalRead(pirPin);
+  Serial.println(pirValue);
+  if(pirValue==1) {
+  digitalWrite(relay4, LOW);}
+  else
+  digitalWrite(relay4, HIGH);
+
+//Senzor temperature
+  delay(500);
+
+  // Očitava temperaturu sa senzora 
+  float h = dht.readHumidity();
+  // Očitava temperaturu u Celsiusima
+  float t = dht.readTemperature();
+  // Očitava temperaturu u Fahrenheit 
+  float f = dht.readTemperature(true);
+  if (isnan(h) || isnan(t) || isnan(f)) {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    return;
+  }
+
+  // Compute heat index in Fahrenheit (the default)
+  float hif = dht.computeHeatIndex(f, h);
+  // Compute heat index in Celsius (isFahreheit = false)
+  float hic = dht.computeHeatIndex(t, h, false);
+
+  Serial.print(F("Vlaznost zraka: "));
+  Serial.print(h);
+  Serial.print(F("%  Temperature: "));
+  Serial.print(t);
+  Serial.println(F("°C "));
+  if (t<21) {
+    Serial.println("Temparatura je manja od 21°C PLAVO");
+    leds[0] = CRGB::Blue;
+    FastLED.show();
+  }
+    else if (t < 24){
+    Serial.println("Temparatura je manja od 24°C veca od 21°C ZELENO");
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    }
+
+    else if (t >24){
+    Serial.println("Temparatura je veca od 25°C CRVENO");
+    leds[0] = CRGB::Red;
+    FastLED.show();
+        
+    }
+
+    
+}
